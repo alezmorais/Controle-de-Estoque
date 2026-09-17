@@ -35,6 +35,12 @@
     <span id="auth-msg" class="auth-msg"></span>
   </section>
 
+  <section class="search-bar">
+    <input type="text" id="search-input" placeholder="Pesquisar bebida..." autocomplete="off">
+    <button id="search-btn" type="button" aria-label="Pesquisar">Pesquisar</button>
+    <button id="search-clear" type="button" aria-label="Limpar pesquisa" hidden>Limpar</button>
+  </section>
+
   <main id="categories"></main>
 </div>
 
@@ -47,11 +53,6 @@
 
 <script>
 (function () {
-  // ------------------------------------------------------------------
-  // URL do seu Web App do Google Apps Script (veja o arquivo Code.gs).
-  // É ele quem valida usuário/código e grava os pedidos na planilha
-  // do Google, compartilhada entre todos os celulares/computadores.
-  // ------------------------------------------------------------------
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcFgn0V-HenVUobRTWAZBuCXz2gw1OatReSNrkwul2nOaQm1O4egVlrMNH-O_NNx4Tag/exec";
 
   const DATA = [
@@ -124,6 +125,9 @@
   const usuarioInput = document.getElementById("usuario");
   const codigoInput = document.getElementById("codigo");
   const authMsg = document.getElementById("auth-msg");
+  const searchInput = document.getElementById("search-input");
+  const searchBtn = document.getElementById("search-btn");
+  const searchClear = document.getElementById("search-clear");
 
   function slug(text) {
     return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-");
@@ -220,6 +224,37 @@
 
   [usuarioInput, codigoInput].forEach(function (el) {
     el.addEventListener("input", function () { showAuthMsg(""); });
+  });
+
+  function normalizar(texto) {
+    return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function aplicarFiltro() {
+    const termo = normalizar(searchInput.value.trim());
+    searchClear.hidden = termo === "";
+
+    container.querySelectorAll(".category").forEach(function (section) {
+      let algumVisivel = false;
+      section.querySelectorAll(".item").forEach(function (item) {
+        const nome = normalizar(item.dataset.nome);
+        const visivel = termo === "" || nome.indexOf(termo) !== -1;
+        item.style.display = visivel ? "" : "none";
+        if (visivel) algumVisivel = true;
+      });
+      section.style.display = algumVisivel ? "" : "none";
+    });
+  }
+
+  searchInput.addEventListener("input", aplicarFiltro);
+  searchBtn.addEventListener("click", function () {
+    searchInput.focus();
+    aplicarFiltro();
+  });
+  searchClear.addEventListener("click", function () {
+    searchInput.value = "";
+    aplicarFiltro();
+    searchInput.focus();
   });
 
   container.addEventListener("input", function (e) {
