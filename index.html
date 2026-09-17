@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Estoque — Destilados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="page-head">
+    <div>
+      <h1>Controle de pedidos e estoque</h1>
+      <p>Informe o estoque atual e a quantidade a pedir de cada bebida.</p>
+    </div>
+    <div class="stat">
+      <span class="num" id="order-count">0</span>
+      <span class="label">itens com pedido</span>
+    </div>
+  </header>
+
+  <section class="auth-bar">
+    <div class="auth-field">
+      <label for="usuario">Usuário</label>
+      <input type="text" id="usuario" placeholder="seu usuário" autocomplete="username">
+    </div>
+    <div class="auth-field">
+      <label for="codigo">Código</label>
+      <input type="password" id="codigo" placeholder="código de acesso" autocomplete="off" inputmode="numeric">
+    </div>
+    <span id="auth-msg" class="auth-msg"></span>
+  </section>
+
+  <main id="categories"></main>
+</div>
+
+<footer class="action-bar">
+  <div class="action-inner">
+    <span id="status-msg">Pedido enviado</span>
+    <button id="submit-btn" type="button">Enviar pedido</button>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // ------------------------------------------------------------------
+  // URL do seu Web App do Google Apps Script (veja o arquivo Code.gs).
+  // É ele quem valida usuário/código e grava os pedidos na planilha
+  // do Google, compartilhada entre todos os celulares/computadores.
+  // ------------------------------------------------------------------
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcFgn0V-HenVUobRTWAZBuCXz2gw1OatReSNrkwul2nOaQm1O4egVlrMNH-O_NNx4Tag/exec";
+
+  const DATA = [
+    { categoria: "Whisky", itens: [
+      "Whisky Ballantine's 12 anos", "Whisky Ballantine's 10 anos", "Whisky Ballantine's Finest",
+      "Whisky Chivas 12 anos", "Whisky Fireball",
+      "Whisky Jack Daniel's", "Whisky Jack Daniel's Honey", "Whisky Jack Daniel's Jennesse Fire", "Whisky Jack Daniel's Maçã Verde",
+      "Whisky Johnnie Walker Gold Label", "Whisky Johnnie Walker Black Label", "Whisky Johnnie Walker Double Black", "Whisky Johnnie Walker Blond", "Whisky Johnnie Walker Red Label",
+      "Whisky Natus Nobillis", "Whisky Old Parr 12 anos", "Whisky Passaport Scoth", "Whisky White Horse"
+    ]},
+    { categoria: "Vodka", itens: [
+      "Vodka Absolut", "Vodka Beefeater", "Vodka Ciroc", "Vodka Smirnoff"
+    ]},
+    { categoria: "Gin", itens: [
+      "Gin Gordon's", "Gin Tanqueray", "Gin Tanqueray Royale", "Gin Tanqueray Sevilla", "Gin Pantera"
+    ]},
+    { categoria: "Rum", itens: [
+      "Rum Bacardi Ouro", "Rum Bacardi Prata"
+    ]},
+    { categoria: "Tequila", itens: [
+      "Tequila Don Julio", "Tequila José Cuervo Ouro", "Tequila José Cuervo Prata"
+    ]},
+    { categoria: "Cachaça", itens: [
+      "Cachaça 51", "Cachaça Asa Branca", "Cachaça Abacaxi", "Cachaça Banana", "Cachaça Boazinha",
+      "Cachaça Canela", "Cachaça Cereja", "Cachaça Claudionor", "Cachaça Coco", "Cachaça Gengibre Vanilla",
+      "Cachaça Mel", "Cachaça Uva", "Cachaça Sagatiba", "Cachaça Salinas", "Cachaça São Francisco", "Cachaça Seleta",
+      "Pinga Velho Barreiro", "Ypioca Ouro", "Ypioca Prata"
+    ]},
+    { categoria: "Conhaque", itens: [
+      "Conhaque Domecq", "Conhaque Dreher", "Conhaque Presidente"
+    ]},
+    { categoria: "Licores e aperitivos", itens: [
+      "Amarula", "Baily's Original", "Jagermeister", "Licor Ballena",
+      "Licor 43", "Licor 43 Chocolate", "Licor Don Luiz", "Licor De Melão Fórmula", "Licor Malibu Caribe de Coco",
+      "Stock Apricot Damasco", "Stock Creme De Cassis", "Stock Curaçau Triple Sec", "Stock Curaçau Blue",
+      "Stock Menta", "Stock Creme de Cacau", "Stock Pêssego",
+      "Aperol Aperitivo", "Brasil Berg", "ST Remy", "Campari",
+      "Martini Rosso", "Martini Bianco", "Martini Vermuth Extra Dry", "Steinhaeger Becosa"
+    ]},
+    { categoria: "Xaropes Monin", itens: [
+      "Xarope Cranberry Monin", "Xarope de Maracujá Monin", "Xarope Gengibre Monin",
+      "Xarope de Toranja Monin", "Xarope Framboesa Monin", "Xarope Maçã Verde Monin", "Groselha Monin"
+    ]},
+    { categoria: "Vinhos", itens: [
+      "Jurupinga Vinho",
+      "Vinho Chalise Branco Seco", "Vinho Chalise Branco Suave", "Vinho Chalise Tinto Seco", "Vinho Chalise Tinto Suave",
+      "Vinho Meio Seco Julia Florista", "Vinho Marquês de Mendonça Seco", "Vinho Marquês de Mendonça Suave", "Vinho Meio Seco Barricado",
+      "Vinho Reservado Cabernet Sauvignon", "Vinho Reservado Carmenere", "Vinho Reservado Malbec",
+      "Vinho Intimista", "Vinho Porta 6", "Vinho Viñas del Tango Premium",
+      "Vinho Stormhoek Pinotage", "Vinho Master Rabbit Syrah", "Vinho Mrs Rabbit Pinot Noir",
+      "Vinho Prado Molar Tempranillo", "Vinho Torre Romanica Sangiovese", "Vinho Amo.Te",
+      "Vinho Cava Bonaval", "Vinho Pescada", "Vinho Paso De Los Andes",
+      "Vinho Isla Negra Sauvignon Blanc", "Vinho Isla Negra Cabernet Sauvignon",
+      "Vinho Tinto Da Pipa", "Vinho Tinto New Roads", "Vinho Tinto Valpa Cabernet Sauvignon", "Vinho Tinto Valpa Light Edition",
+      "Vinho Liburna Nero D'àvola", "Vinho La Fogliara Primitivo", "Vinho Salton Paradoxo Merlot",
+      "Vinho Origem Merlo", "Vinho Origem Cabernet Sauvignon", "Vinho Tinto Shiraz Pure (S/ álcool)"
+    ]},
+    { categoria: "Espumantes", itens: [
+      "Espumante Del Sole"
+    ]},
+    { categoria: "Outros", itens: [
+      "Suco de Tomate", "Saquê 5L"] }
+  ];
+
+  const STORAGE_KEY = "estoque-destilados-v1";
+  const container = document.getElementById("categories");
+  const orderCountEl = document.getElementById("order-count");
+  const submitBtn = document.getElementById("submit-btn");
+  const statusMsg = document.getElementById("status-msg");
+  const usuarioInput = document.getElementById("usuario");
+  const codigoInput = document.getElementById("codigo");
+  const authMsg = document.getElementById("auth-msg");
+
+  function slug(text) {
+    return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-");
+  }
+
+  let saved = {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) saved = JSON.parse(raw);
+  } catch (e) {
+    saved = {};
+  }
+
+  DATA.forEach(function (group) {
+    const section = document.createElement("section");
+    section.className = "category";
+
+    const h2 = document.createElement("h2");
+    h2.textContent = group.categoria;
+    section.appendChild(h2);
+
+    const list = document.createElement("div");
+    list.className = "list";
+
+    const listHead = document.createElement("div");
+    listHead.className = "list-head";
+    listHead.innerHTML = "<span>Bebida</span><span>Estoque</span><span>Pedido</span><span>Total</span>";
+    list.appendChild(listHead);
+
+    group.itens.forEach(function (nome) {
+      const id = slug(group.categoria) + "--" + slug(nome);
+      const item = document.createElement("div");
+      item.className = "item";
+      item.dataset.id = id;
+      item.dataset.categoria = group.categoria;
+      item.dataset.nome = nome;
+
+      const savedItem = saved[id] || {};
+
+      item.innerHTML =
+        '<span class="item-name">' + nome + '</span>' +
+        '<div class="fields-row">' +
+          '<div class="field">' +
+            '<label for="estoque-' + id + '">Estoque</label>' +
+            '<input type="number" min="0" step="1" inputmode="numeric" id="estoque-' + id + '" class="in-estoque" value="' + (savedItem.estoque ?? "") + '" placeholder="0">' +
+          '</div>' +
+          '<div class="field">' +
+            '<label for="pedido-' + id + '">Pedido</label>' +
+            '<input type="number" min="0" step="1" inputmode="numeric" id="pedido-' + id + '" class="in-pedido" value="' + (savedItem.pedido ?? "") + '" placeholder="0">' +
+          '</div>' +
+          '<div class="total-wrap">' +
+            '<label>Total</label>' +
+            '<span class="total">0</span>' +
+          '</div>' +
+        '</div>';
+
+      list.appendChild(item);
+    });
+
+    section.appendChild(list);
+    container.appendChild(section);
+  });
+
+  function persist() {
+    const data = {};
+    container.querySelectorAll(".item").forEach(function (item) {
+      const estoque = item.querySelector(".in-estoque").value;
+      const pedido = item.querySelector(".in-pedido").value;
+      if (estoque !== "" || pedido !== "") {
+        data[item.dataset.id] = { estoque: estoque, pedido: pedido };
+      }
+    });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function recalc(item) {
+    const estoque = parseFloat(item.querySelector(".in-estoque").value) || 0;
+    const pedido = parseFloat(item.querySelector(".in-pedido").value) || 0;
+    const totalEl = item.querySelector(".total");
+    totalEl.textContent = estoque + pedido;
+    totalEl.classList.toggle("has-order", pedido > 0);
+  }
+
+  function recalcAll() {
+    const items = container.querySelectorAll(".item");
+    let comPedido = 0;
+    items.forEach(function (item) {
+      recalc(item);
+      const pedido = parseFloat(item.querySelector(".in-pedido").value) || 0;
+      if (pedido > 0) comPedido++;
+    });
+    orderCountEl.textContent = comPedido;
+  }
+
+  [usuarioInput, codigoInput].forEach(function (el) {
+    el.addEventListener("input", function () { showAuthMsg(""); });
+  });
+
+  container.addEventListener("input", function (e) {
+    if (e.target.matches(".in-estoque, .in-pedido")) {
+      recalc(e.target.closest(".item"));
+      recalcAll();
+      persist();
+    }
+  });
+
+  function showAuthMsg(text, ok) {
+    authMsg.textContent = text;
+    authMsg.classList.toggle("ok", !!ok);
+  }
+
+  function limparFormulario() {
+    container.querySelectorAll(".item").forEach(function (item) {
+      item.querySelector(".in-estoque").value = "";
+      item.querySelector(".in-pedido").value = "";
+    });
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    codigoInput.value = "";
+    recalcAll();
+  }
+
+  function enviarPedido(usuario, codigo, itens) {
+    return fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      // text/plain evita o preflight de CORS; o Apps Script lê o JSON normalmente
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ usuario: usuario, codigo: codigo, itens: itens })
+    }).then(function (res) { return res.json(); });
+  }
+
+  submitBtn.addEventListener("click", function () {
+    const usuario = usuarioInput.value.trim().toLowerCase();
+    const codigo = codigoInput.value.trim();
+
+    if (!usuario || !codigo) {
+      showAuthMsg("Informe usuário e código para enviar o pedido.");
+      return;
+    }
+
+    const pedido = [];
+    container.querySelectorAll(".item").forEach(function (item) {
+      const estoque = parseFloat(item.querySelector(".in-estoque").value) || 0;
+      const qtdPedido = parseFloat(item.querySelector(".in-pedido").value) || 0;
+      if (estoque > 0 || qtdPedido > 0) {
+        pedido.push({
+          categoria: item.dataset.categoria,
+          bebida: item.dataset.nome,
+          estoque: estoque,
+          pedido: qtdPedido,
+          total: estoque + qtdPedido
+        });
+      }
+    });
+
+    if (pedido.length === 0) {
+      showAuthMsg("Nenhum item com estoque ou pedido informado.");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Enviando...";
+    showAuthMsg("Enviando pedido, aguarde...", true);
+
+    enviarPedido(usuario, codigo, pedido)
+      .then(function (resposta) {
+        submitBtn.disabled = false;
+
+        if (!resposta || !resposta.ok) {
+          const erro = (resposta && resposta.erro) || "Não foi possível enviar o pedido.";
+          submitBtn.textContent = "Enviar pedido";
+          showAuthMsg(erro);
+          return;
+        }
+
+        showAuthMsg("Pedido enviado por " + usuario + ".", true);
+
+        submitBtn.textContent = "Enviado ✓";
+        submitBtn.classList.add("sent");
+        statusMsg.classList.add("show");
+        setTimeout(function () {
+          submitBtn.textContent = "Enviar pedido";
+          submitBtn.classList.remove("sent");
+          statusMsg.classList.remove("show");
+        }, 2200);
+
+        limparFormulario();
+      })
+      .catch(function () {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Enviar pedido";
+        showAuthMsg("Falha de conexão. Verifique a internet e tente novamente.");
+      });
+  });
+
+  recalcAll();
+})();
+</script>
+
+</body>
+</html>
